@@ -1,0 +1,26 @@
+# --- AWS / Terraform ---
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+
+# --- Kredensial & kunci (JANGAN pernah commit nilai asli) ---
+*.pem
+*.key
+*.p12
+*.crt
+id_rsa
+id_ed25519
+id_ecdsa
+*.tfkey
+.env
+.env.*
+.terraform.rc
+ credentials
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp

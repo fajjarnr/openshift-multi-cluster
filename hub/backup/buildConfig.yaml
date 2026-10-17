@@ -1,0 +1,35 @@
+# Build image ose-cli + awscli v2 di dalam cluster (source artikel Containerfile).
+# Build: oc start-build ose-cli-aws -n etcd-backup --follow
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ose-cli-aws
+  namespace: etcd-backup
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ose-cli-aws
+  namespace: etcd-backup
+spec:
+  runPolicy: Serial
+  triggers:
+  - type: ConfigChange
+  source:
+    dockerfile: |
+      FROM registry.redhat.io/openshift4/ose-cli:latest
+      USER root
+      # base image ose-cli pakai microdnf (ubi-micro); fallback yum/apt utk variasi tag
+      RUN microdnf install -y unzip curl openssh-clients || (yum install -y unzip curl openssh-clients) || (apt-get update && apt-get install -y unzip curl openssh-clients)
+      RUN curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
+        && unzip -q /tmp/awscliv2.zip -d /tmp \
+        && /tmp/aws/install \
+        && rm -rf /tmp/awscliv2.zip /tmp/aws
+      RUN aws --version
+      USER 1001
+  strategy:
+    dockerStrategy: {}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ose-cli-aws:latest

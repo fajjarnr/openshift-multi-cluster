@@ -1,0 +1,87 @@
+# CronJob retensi S3 — hapus backup > 14 hari di bucket noobaa
+# (parsling umur dari timestamp di nama key: backup-YYYYMMDD-HHMMSS.tar.gz)
+# catatan: cronjob gabungan etcd-backup-retention masih live di cluster;
+# kalau mau pindah ke versi terpisah: apply file ini + hapus cronjob gabungan
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup-retention
+  namespace: etcd-backup
+spec:
+  schedule: "15 2 * * *"        # 02:15 WIB — setelah backup S3 01:00
+  timeZone: Asia/Jakarta
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          serviceAccountName: etcd-backup-sa
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 30
+          dnsPolicy: ClusterFirst
+          containers:
+          - name: retention
+            image: image-registry.openshift-image-registry.svc:5000/etcd-backup/ose-cli-aws:latest
+            imagePullPolicy: Always
+            securityContext:
+              privileged: true
+              runAsUser: 0
+            env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: etcd-backup-s3-creds
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: etcd-backup-s3-creds
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_CA_BUNDLE
+              value: /etc/backup-ca/ca.crt
+            - name: AWS_REQUEST_CHECKSUM_CALCULATION
+              value: when_required
+            - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+              value: when_required
+            - name: S3_BUCKET
+              value: etcd-backup-bdc06164-6e17-4c67-acb0-436ecd536439
+            - name: RETENTION_MINUTES
+              value: "20160"    # produksi: 14 hari (=20160 menit); 10080 = 7 hari
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              NOW=$(date +%s)
+              CUTOFF=$((NOW - RETENTION_MINUTES*60))
+              echo "S3 retention cutoff: $(date -d "@$CUTOFF" '+%Y-%m-%d %H:%M:%S')"
+              aws --endpoint-url=https://s3.openshift-storage.svc:443 s3 ls "s3://${S3_BUCKET}/" | awk '{print $4}' | while read -r K; do
+                DT="${K:7:8}"; TM="${K:16:6}"
+                [[ "$DT$TM" =~ ^[0-9]{14}$ ]] || { echo "skip unparseable key: $K"; continue; }
+                E=$(date -d "${DT:0:4}-${DT:4:2}-${DT:6:2} ${TM:0:2}:${TM:2:2}:${TM:4:2}" +%s) || continue
+                if [ "$E" -lt "$CUTOFF" ]; then
+                  echo "deleting s3://${S3_BUCKET}/${K}"
+                  aws --endpoint-url=https://s3.openshift-storage.svc:443 s3 rm "s3://${S3_BUCKET}/${K}"
+                fi
+              done
+              echo "S3 retention complete."
+            volumeMounts:
+            - name: s3-ca
+              mountPath: /etc/backup-ca
+              readOnly: true
+            resources:
+              requests:
+                ephemeral-storage: 512Mi
+              limits:
+                ephemeral-storage: 1Gi
+          volumes:
+          - name: s3-ca
+            secret:
+              secretName: etcd-s3-ca

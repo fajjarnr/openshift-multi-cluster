@@ -1,0 +1,20 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: openshift-storage
+  annotations:
+    # Anotasi ini sengaja KOSONG.
+    #
+    # Jangan pasang openshift.io/node-selector di namespace ini. Anotasi itu
+    # menyuntik nodeSelector ke SETIAP pod, termasuk pod DaemonSet (CSI
+    # nodeplugin). Di OpenShift, DaemonSet controller ikut memakai selector itu
+    # untuk menghitung node target, sehingga nodeplugin yang harusnya jalan di
+    # semua node jadi terbatas. Terbukti: dengan
+    # node-selector='node-role.kubernetes.io/odf=', desired nodeplugin turun ke 0
+    # dan driver rbd tidak terdaftar di CSINode -> PVC RBD gagal attach.
+    #
+    # defaultTolerations juga tidak dipakai lagi: node odf sekarang bertaint
+    # node.ocs.openshift.io/storage=true, yang sudah ada di toleration bawaan
+    # ODF (pkg/defaults/placements.go) dan di toleration hardcoded CSI
+    # nodeplugin. Tidak perlu ditambah dari sini.
+    openshift.io/node-selector: ''

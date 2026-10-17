@@ -1,0 +1,12 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: stackrox
+  annotations:
+    # Kosong: ACS pod dipin lewat spec.customize.deploymentDefaults.nodeSelector
+    # di central.yaml / secured.yaml, bukan lewat anotasi namespace.
+    #
+    # Jangan pasang openshift.io/node-selector di sini — anotasi itu menyuntik
+    # nodeSelector ke setiap pod termasuk DaemonSet (Collector), dan di OpenShift
+    # DaemonSet controller ikut memakainya untuk menghitung node target.
+    openshift.io/node-selector: ''

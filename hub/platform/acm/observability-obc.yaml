@@ -1,0 +1,8 @@
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: acm-observability-s3
+  namespace: openshift-storage
+spec:
+  generateBucketName: acm-observability
+  storageClassName: openshift-storage.noobaa.io

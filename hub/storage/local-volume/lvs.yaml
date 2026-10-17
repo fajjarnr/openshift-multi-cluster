@@ -1,0 +1,29 @@
+apiVersion: local.storage.openshift.io/v1alpha1
+kind: LocalVolumeSet
+metadata:
+  name: localvolumeset
+  namespace: openshift-local-storage
+spec:
+  deviceInclusionSpec:
+    deviceMechanicalProperties:
+      - Rotational
+      - NonRotational
+    deviceTypes:
+      - disk
+    minSize: 100G
+  # Pakai label node, bukan daftar hostname: node odf dibuat oleh MachineSet
+  # (compute/machineSets/odf.yaml), jadi hostname berubah kalau node diganti.
+  nodeSelector:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: node-role.kubernetes.io/odf
+            operator: Exists
+  storageClassName: lvs-sc
+  volumeMode: Block
+  # DaemonSet LSO mewarisi tolerations dari CR ini, bukan dari anotasi namespace.
+  # Key ini harus cocok dengan taint di compute/machineSets/odf.yaml.
+  tolerations:
+    - key: node.ocs.openshift.io/storage
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

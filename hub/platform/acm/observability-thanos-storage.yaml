@@ -1,0 +1,49 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: thanos-object-storage
+  namespace: open-cluster-management
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: <ISI_BUCKET_DARI_OBC>
+      endpoint: s3.openshift-storage.svc:443
+      insecure: false
+      access_key: <ISI_AWS_ACCESS_KEY_ID>
+      secret_key: <ISI_AWS_SECRET_ACCESS_KEY>
+      http_config:
+        tls_config:
+          ca_file: /etc/thanos/tls/ca.crt
+---
+# POD MCO membaca secret ini di namespace-nya sendiri (bukan dari ns CR MCO) —
+# jadi harus ada di open-cluster-management-observability juga:
+kind: Secret
+apiVersion: v1
+metadata:
+  name: thanos-object-storage
+  namespace: open-cluster-management-observability
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: <ISI_BUCKET_DARI_OBC>
+      endpoint: s3.openshift-storage.svc:443
+      insecure: false
+      access_key: <ISI_AWS_ACCESS_KEY_ID>
+      secret_key: <ISI_AWS_SECRET_ACCESS_KEY>
+      http_config:
+        tls_config:
+          ca_file: /etc/thanos/tls/ca.crt
+
+# ISI KREDENSIAL dari OBC acm-observability-s3 (ns openshift-storage):
+#   bucket     : oc get obc acm-observability-s3 -n openshift-storage -o jsonpath='{.spec.bucketName}'
+#   access key : oc get secret acm-observability-s3 -n openshift-storage -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d
+#   secret key : sertakan AWS_SECRET_ACCESS_KEY juga dgn perintah serupa
+#
+# CATATAN (build thanos ACM 2.x beda dengan doc RH upstream):
+#   - field kredensial: access_key / secret_key (BUKAN access_key_id / secret_access_key)
+#   - endpoint TANPA scheme (host:port), TLS dikendalikan insecure: false
+#   - CA noobaa (self-signed) diberi via CRD metricObjectStorage.tlsSecretName=thanos-ca
+#     (dibuat dari secret signing-key ns openshift-service-ca — CA signer cert noobaa)
+#   - sudah diuji e2e ke noobaa via thanos tools bucket ls

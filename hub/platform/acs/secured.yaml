@@ -1,0 +1,43 @@
+apiVersion: platform.stackrox.io/v1alpha1
+kind: SecuredCluster
+metadata:
+  name: stackrox-secured-cluster-services
+  namespace: stackrox
+spec:
+  centralEndpoint: central.stackrox.svc:443
+  clusterName: hub
+  admissionControl:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 50m
+        memory: 100Mi
+      limits:
+        cpu: 500m
+        memory: 500Mi
+  sensor:
+    resources:
+      requests:
+        cpu: '1'
+        memory: 1Gi
+      limits:
+        cpu: '2'
+        memory: 4Gi
+  perNode:
+    collector:
+      collection: EBPF
+      imageFlavor: Slim
+    taintToleration: TolerateTaints
+  scanner:
+    scannerComponent: AutoSense
+  # Hanya komponen Deployment (Sensor, Admission Control, Scanner) yang terpin.
+  # Collector adalah DaemonSet dan tetap jalan di semua node — memang harus,
+  # karena ia mengumpulkan aktivitas tingkat host.
+  #
+  # Sama seperti central.yaml: pinToNodes: InfraRole tidak dipakai karena
+  # di-hardcode ke label node-role.kubernetes.io/infra + taint infra=reserved.
+  # Node infra-opp tidak bertaint, jadi cukup nodeSelector tanpa tolerations.
+  customize:
+    deploymentDefaults:
+      nodeSelector:
+        node-role.kubernetes.io/infra-opp: ""

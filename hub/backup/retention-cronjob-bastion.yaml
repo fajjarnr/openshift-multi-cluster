@@ -1,0 +1,66 @@
+# CronJob retensi bastion — hapus backup > 14 hari di /opt/etcd-backup
+# (find -mmin; umur file, tidak parsing nama)
+# target utama retensi: bastion = offsite, independen dari kesehatan cluster
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup-retention-bastion
+  namespace: etcd-backup
+spec:
+  schedule: "30 2 * * *"        # 02:30 WIB — setelah backup bastion 00:00 & retention S3
+  timeZone: Asia/Jakarta
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          serviceAccountName: etcd-backup-sa
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 30
+          dnsPolicy: ClusterFirst
+          containers:
+          - name: retention
+            image: image-registry.openshift-image-registry.svc:5000/etcd-backup/ose-cli-aws:latest
+            imagePullPolicy: Always
+            # runAsUser 0: secret key file mode 0400 owned root (SA sudah SCC privileged)
+            securityContext:
+              privileged: true
+              runAsUser: 0
+            env:
+            - name: BASTION_HOST
+              value: 13.215.179.173
+            - name: BASTION_USER
+              value: ubuntu
+            - name: RETENTION_MINUTES
+              value: "20160"    # produksi: 14 hari (=20160 menit); 10080 = 7 hari
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              export SSH_OPTS="-i /etc/backup-ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+              echo "Bastion retention: delete backup-* older than ${RETENTION_MINUTES} minutes ($(date -d "-${RETENTION_MINUTES} minutes" '+%Y-%m-%d %H:%M:%S'))..."
+              ssh ${SSH_OPTS} "${BASTION_USER}@${BASTION_HOST}" "find /opt/etcd-backup -name 'backup-*.tar.gz' -mmin +${RETENTION_MINUTES} -print -delete"
+              echo "Bastion retention complete."
+            volumeMounts:
+            - name: bastion-ssh
+              mountPath: /etc/backup-ssh
+              readOnly: true
+            resources:
+              requests:
+                ephemeral-storage: 512Mi
+              limits:
+                ephemeral-storage: 1Gi
+          volumes:
+          - name: bastion-ssh
+            secret:
+              secretName: etcd-backup-bastion-ssh
+              defaultMode: 0400
+              items:
+              - key: id_ed25519
+                path: id_ed25519

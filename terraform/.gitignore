@@ -1,0 +1,15 @@
+# State lokal (berisi data sensitif, JANGAN commit)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.tfstate.lock.info
+
+# Artifacts runtime
+.terraform/
+*.tfplan
+*.plan
+crash.log
+crash.*.log
+
+# kunci provider (.terraform.lock.hcl) DIBIARAKAN di-commit,
+# agar version provider terpinning — jangan di-ignore.

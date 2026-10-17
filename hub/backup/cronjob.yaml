@@ -1,0 +1,92 @@
+# Automated etcd backup -> object storage (noobaa), adapted dari artikel
+# https://medium.com/@arun4477/automated-etcd-backup-to-object-storage-in-openshift-4-20-886f4febb365
+# Alur: pod cronjob -> oc debug master -> /usr/local/bin/cluster-backup.sh -> tar -> aws s3 cp -> cleanup.
+# CronJob rampung saat Suspend=true — set false setelah image terbuild + secret/bucket siap.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: etcd-backup
+spec:
+  schedule: "0 1 * * *"        # tiap hari 01:00 WIB (setelah bastion 00:00)
+  timeZone: Asia/Jakarta
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          serviceAccountName: etcd-backup-sa
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 30
+          activeDeadlineSeconds: 500
+          dnsPolicy: ClusterFirst
+          containers:
+          - name: backup
+            image: image-registry.openshift-image-registry.svc:5000/etcd-backup/ose-cli-aws:latest
+            imagePullPolicy: Always
+            securityContext:
+              privileged: true
+              runAsUser: 0
+            env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: etcd-backup-s3-creds
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: etcd-backup-s3-creds
+                  key: AWS_SECRET_ACCESS_KEY
+            # noobaa S3: endpoint host:port/scheme URL utk awscli (beda dgn thanos minio-go),
+            # TLS self-signed ditangani AWS_CA_BUNDLE dari secret CA (no --no-verify-ssl)
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: S3_BUCKET
+              value: etcd-backup-bdc06164-6e17-4c67-acb0-436ecd536439
+            - name: AWS_CA_BUNDLE
+              value: /etc/backup-ca/ca.crt
+            # env checksum wajib utk S3-compatible non-AWS (username artikel)
+            - name: AWS_REQUEST_CHECKSUM_CALCULATION
+              value: when_required
+            - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+              value: when_required
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              DATE=$(date +%Y%m%d-%H%M%S)
+              NODE=$(oc get nodes -l node-role.kubernetes.io/master --no-headers -o custom-columns=NAME:.metadata.name | head -n1)
+              REMOTE_DIR="/home/core/etcd-backup/backup-${DATE}"
+              LOCAL_TAR="/tmp/backup-${DATE}.tar.gz"
+              # bersihkan residu run sebelumnya di node (failed run batal cleanup)
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host rm -rf "/home/core/etcd-backup" 2>/dev/null || true
+              echo "Running cluster-backup.sh on ${NODE}..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host /bin/bash -c "/usr/local/bin/cluster-backup.sh ${REMOTE_DIR}"
+              echo "Streaming backup from ${NODE} into local tarball..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host tar -czf - -C "$(dirname "${REMOTE_DIR}")" "$(basename "${REMOTE_DIR}")" > "${LOCAL_TAR}"
+              echo "Uploading to s3://${S3_BUCKET}/..."
+              aws --endpoint-url=https://s3.openshift-storage.svc:443 s3 cp "${LOCAL_TAR}" "s3://${S3_BUCKET}/backup-${DATE}.tar.gz"
+              echo "Cleaning up temp files on ${NODE} and locally..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host rm -rf "${REMOTE_DIR}"
+              rm -f "${LOCAL_TAR}"
+              echo "Backup complete: s3://${S3_BUCKET}/backup-${DATE}.tar.gz"
+            volumeMounts:
+            - name: s3-ca
+              mountPath: /etc/backup-ca
+              readOnly: true
+            resources:
+              requests:
+                ephemeral-storage: 2Gi
+              limits:
+                ephemeral-storage: 4Gi
+          volumes:
+          - name: s3-ca
+            secret:
+              secretName: etcd-s3-ca

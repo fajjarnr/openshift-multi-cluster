@@ -1,0 +1,54 @@
+apiVersion: ocs.openshift.io/v1
+kind: StorageCluster
+metadata:
+  name: ocs-storagecluster
+  namespace: openshift-storage
+spec:
+  # Cluster ini single-AZ (semua node di ap-southeast-1a), jadi failure domain
+  # wajib `host`. Tanpa flexibleScaling, ODF memakai failure domain `zone` dan
+  # cuma menemukan satu zone.
+  flexibleScaling: true
+
+  # 3 node odf x 3 disk = 9 device. Dengan flexibleScaling, satu device set sudah
+  # cukup: OSD disebar ke 3 host oleh topologySpreadConstraints bawaan ODF
+  # (maxSkew=1, topologyKey=kubernetes.io/hostname).
+  storageDeviceSets:
+    - name: ocs-deviceset
+      count: 9
+      replica: 1
+      deviceClass: ssd
+      dataPVCTemplate:
+        spec:
+          storageClassName: lvs-sc
+          accessModes:
+            - ReadWriteOnce
+          volumeMode: Block
+          resources:
+            requests:
+              # Harus sama dengan kapasitas PV yang dibuat LSO (lvs.yaml).
+              # "1" berarti 1 byte: tetap bind selama semua PV berukuran sama,
+              # tapi rapuh begitu ada PV dengan ukuran berbeda.
+              storage: 300Gi
+
+  # MON memakai hostPath karena lvs-sc adalah static provisioner
+  # (kubernetes.io/no-provisioner) dan tidak bisa dipakai monPVCTemplate.
+  # Ganti ke gp3-csi kalau MON perlu persisten saat pod pindah node.
+  monDataDirHostPath: /var/lib/rook
+
+# Catatan penempatan:
+#
+# labelSelector dan placement TIDAK diset di sini. Daemon Ceph (MON/MGR/OSD/
+# MDS/RGW) sudah menemukan node odf lewat nodeAffinity bawaan ODF, yang memakai
+# label cluster.ocs.openshift.io/openshift-storage (dipasang
+# compute/machineSets/odf.yaml). Toleration odf=node datang dari anotasi
+# defaultTolerations di odf/ns.yaml.
+#
+# placement.all sengaja dihindari: di ocs-operator, "placement specification for
+# osd & prepareosd are handled at the deviceSet level" (lihat
+# internal/controller/storagecluster/placement.go), jadi placement.all tidak
+# menyentuh OSD dan hanya menambah kebingungan.
+#
+# Yang TIDAK dijangkau mekanisme mana pun di atas: CSI nodeplugin. Toleration-nya
+# hardcoded di ocs-client-operator dan tidak bisa diubah. Pastikan node odf
+# bertaint node.ocs.openshift.io/storage=true:NoSchedule, atau driver rbd tidak
+# akan terdaftar di node itu.

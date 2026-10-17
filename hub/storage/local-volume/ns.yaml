@@ -1,0 +1,6 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: openshift-local-storage
+  annotations:
+    openshift.io/node-selector: ''

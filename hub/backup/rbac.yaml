@@ -1,0 +1,31 @@
+# ClusterRole: minimum utk pod etcd-backup melakukan oc debug ke node master
+# (source artikel dinormalisasi: CRB asli menunjuk SA/ns yang salah)
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-etcd-backup
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources:
+  - pods
+  - pods/log
+  verbs: ["get", "list", "create", "delete", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-etcd-backup
+  labels:
+    app: openshift-backup
+subjects:
+- kind: ServiceAccount
+  name: etcd-backup-sa
+  namespace: etcd-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-etcd-backup

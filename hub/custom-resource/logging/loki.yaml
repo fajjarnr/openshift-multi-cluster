@@ -1,0 +1,106 @@
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: logging-loki
+  namespace: openshift-logging
+spec:
+  limits:
+    global:
+      retention:
+        days: 30
+  size: 1x.extra-small
+  # replication:
+  #   factor: 1 # default extra-small
+  storage:
+    schemas:
+      - effectiveDate: '2026-01-01'
+        version: v13
+    secret:
+      name: logging-loki-secret
+      type: s3
+    tls:
+      caName: openshift-service-ca.crt
+  storageClassName: ocs-storagecluster-ceph-rbd
+  tenants:
+    mode: openshift-logging
+  template:
+    compactor:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    distributor:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    gateway:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    indexGateway:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    ingester:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    querier:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    queryFrontend:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+    ruler:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ''
+      tolerations:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute

@@ -1,0 +1,78 @@
+# CronJob kedua: etcd backup -> bastion ubuntu@13.215.179.173:/opt/etcd-backup
+# (backup lapis kedua di luar cluster, cluster mati pun tar masih ada)
+# butuh: secret etcd-backup-bastion-ssh (key id_ed25519, mode 0400) + image ose-cli-aws dgn openssh-clients
+# retensi (14 hari) jalan di cronjob etcd-backup-retention (terpisah)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup-bastion
+  namespace: etcd-backup
+spec:
+  schedule: '0 0 * * *' # tiap hari 00:00 WIB — sebelum cronjob S3 (01:00)
+  timeZone: Asia/Jakarta
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          serviceAccountName: etcd-backup-sa
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 30
+          activeDeadlineSeconds: 500
+          dnsPolicy: ClusterFirst
+          containers:
+          - name: backup
+            image: image-registry.openshift-image-registry.svc:5000/etcd-backup/ose-cli-aws:latest
+            imagePullPolicy: Always
+            securityContext:
+              privileged: true
+              runAsUser: 0
+            env:
+            - name: BASTION_HOST
+              value: 13.215.179.173
+            - name: BASTION_USER
+              value: ubuntu
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              export SSH_OPTS="-i /etc/backup-ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+              DATE=$(date +%Y%m%d-%H%M%S)
+              NODE=$(oc get nodes -l node-role.kubernetes.io/master --no-headers -o custom-columns=NAME:.metadata.name | head -n1)
+              REMOTE_DIR="/home/core/etcd-backup-bastion/backup-${DATE}"
+              LOCAL_TAR="/tmp/backup-${DATE}.tar.gz"
+              # bersihkan residu run sebelumnya di node (failed run batal cleanup)
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host rm -rf "/home/core/etcd-backup-bastion" 2>/dev/null || true
+              echo "Running cluster-backup.sh on ${NODE}..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host /bin/bash -c "/usr/local/bin/cluster-backup.sh ${REMOTE_DIR}"
+              echo "Streaming backup from ${NODE} into local tarball..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host tar -czf - -C "$(dirname "${REMOTE_DIR}")" "$(basename "${REMOTE_DIR}")" > "${LOCAL_TAR}"
+              echo "Uploading to bastion ${BASTION_USER}@${BASTION_HOST}:/opt/etcd-backup/..."
+              scp ${SSH_OPTS} "${LOCAL_TAR}" "${BASTION_USER}@${BASTION_HOST}:/opt/etcd-backup/backup-${DATE}.tar.gz"
+              echo "Cleaning up temp files on ${NODE} and locally..."
+              oc debug node/"${NODE}" --to-namespace=etcd-backup -- chroot /host rm -rf "/home/core/etcd-backup-bastion"
+              rm -f "${LOCAL_TAR}"
+              echo "Backup complete: ${BASTION_USER}@${BASTION_HOST}:/opt/etcd-backup/backup-${DATE}.tar.gz"
+            volumeMounts:
+            - name: bastion-ssh
+              mountPath: /etc/backup-ssh
+              readOnly: true
+            resources:
+              requests:
+                ephemeral-storage: 2Gi
+              limits:
+                ephemeral-storage: 4Gi
+          volumes:
+          - name: bastion-ssh
+            secret:
+              secretName: etcd-backup-bastion-ssh
+              defaultMode: 0400
+              items:
+              - key: id_ed25519
+                path: id_ed25519

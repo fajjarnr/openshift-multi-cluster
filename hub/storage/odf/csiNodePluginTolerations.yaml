@@ -1,0 +1,61 @@
+# Tolerations untuk CSI nodeplugin ODF.
+#
+# Kenapa perlu: node infra bertaint `infra=node` (NoSchedule + NoExecute),
+# sementara toleration nodeplugin ODF hanya `node.ocs.openshift.io/storage`.
+# Tanpa patch ini, driver rbd/cephfs tidak terdaftar di CSINode node infra,
+# sehingga PVC ODF tidak bisa attach di sana:
+#
+#   AttachVolume.Attach failed for volume "pvc-..." :
+#   CSINode ip-... does not contain driver openshift-storage.rbd.csi.ceph.com
+#
+# Kenapa lewat `Driver` CR, bukan `OperatorConfig`:
+# `ocs-client-operator` menimpa `OperatorConfig ceph-csi-operator-config` dari
+# template hardcoded setiap reconcile
+# (pkg/templates/csi.go -> templates.CSIOperatorConfigSpec.DeepCopyInto), jadi
+# patch ke sana selalu di-revert. `Driver.spec.nodePlugin.tolerations` tidak
+# ditimpa — sudah diuji bertahan >45 detik dan nodeplugin langsung naik dari
+# desired=5 ke desired=8 (3 node infra ikut).
+#
+# PERHATIAN: apply ulang setelah upgrade ODF. CSV baru bisa me-reset Driver.
+# Verifikasi dengan:
+#   oc get driver -n openshift-storage -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodePlugin.tolerations[*].key}{"\n"}{end}'
+---
+apiVersion: csi.ceph.io/v1
+kind: Driver
+metadata:
+  name: openshift-storage.rbd.csi.ceph.com
+  namespace: openshift-storage
+spec:
+  nodePlugin:
+    tolerations:
+      # toleration bawaan ODF; disertakan eksplisit supaya tidak hilang
+      - key: node.ocs.openshift.io/storage
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      # node infra (compute/machineSets/infra.yaml)
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+---
+apiVersion: csi.ceph.io/v1
+kind: Driver
+metadata:
+  name: openshift-storage.cephfs.csi.ceph.com
+  namespace: openshift-storage
+spec:
+  nodePlugin:
+    tolerations:
+      - key: node.ocs.openshift.io/storage
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute

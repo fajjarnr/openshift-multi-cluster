@@ -1,0 +1,67 @@
+apiVersion: platform.stackrox.io/v1alpha1
+kind: Central
+metadata:
+  name: stackrox-central
+  namespace: stackrox
+spec:
+  central:
+    adminPasswordSecret:
+      name: central-admin-password
+    exposure:
+      route:
+        reencrypt:
+          enabled: true
+    persistence:
+      persistentVolumeClaim:
+        size: 100Gi
+        storageClassName: ocs-storagecluster-ceph-rbd
+    resources:
+      requests:
+        cpu: '1500m'
+        memory: 4Gi
+      limits:
+        cpu: '4'
+        memory: 8Gi
+    db:
+      resources:
+        requests:
+          cpu: '500m'
+          memory: 2Gi
+        limits:
+          cpu: '2'
+          memory: 4Gi
+  scannerV4:
+    scannerComponent: Enabled
+    db:
+      persistence:
+        persistentVolumeClaim:
+          claimName: scanner-v4-db
+          size: 100Gi
+          storageClassName: ocs-storagecluster-ceph-rbd
+  scanner:
+    scannerComponent: Enabled
+    analyzer:
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 2
+      resources:
+        requests:
+          cpu: '1'
+          memory: 1500Mi
+        limits:
+          cpu: '2'
+          memory: 4Gi
+    db:
+      resources:
+        requests:
+          cpu: '500m'
+          memory: 2Gi
+        limits:
+          cpu: '2'
+          memory: 4Gi
+  customize:
+    deploymentDefaults:
+      nodeSelector:
+        node-role.kubernetes.io/infra-opp: ''

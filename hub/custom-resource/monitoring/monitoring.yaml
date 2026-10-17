@@ -1,0 +1,111 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    alertmanagerMain:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ocs-storagecluster-ceph-rbd
+          resources:
+            requests:
+              storage: 20G
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    prometheusK8s:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      retention: 30d
+      retentionSize: 180GB
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ocs-storagecluster-ceph-rbd
+          resources:
+            requests:
+              storage: 200G
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    prometheusOperator:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    metricsServer:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    kubeStateMetrics:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    telemeterClient:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    openshiftStateMetrics:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    thanosQuerier:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute
+    monitoringPlugin:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+      - key: infra
+        value: node
+        effect: NoSchedule
+      - key: infra
+        value: node
+        effect: NoExecute

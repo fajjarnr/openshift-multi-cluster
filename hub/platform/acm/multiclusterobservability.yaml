@@ -1,0 +1,36 @@
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+  namespace: open-cluster-management
+spec:
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 300
+  nodeSelector:
+    node-role.kubernetes.io/infra-opp: ''
+  storageConfig:
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+      # CA noobaa (self-signed) untuk thanos pods — mount /etc/thanos/tls
+      # (thanos.yaml: http_config.tls_config.ca_file=/etc/thanos/tls/ca.crt)
+      tlsSecretName: thanos-ca
+      tlsSecretMountPath: /etc/thanos/tls
+    storageClass: ocs-storagecluster-ceph-rbd
+    alertmanagerStorageSize: 20Gi
+    receiveStorageSize: 100Gi
+    ruleStorageSize: 10Gi
+    storeStorageSize: 10Gi
+    compactStorageSize: 100Gi
+  advanced:
+    alertmanager:
+      replicas: 3
+    receive:
+      replicas: 3
+    rule:
+      replicas: 3
+    store:
+      replicas: 3
+    compact:
+      replicas: 1
