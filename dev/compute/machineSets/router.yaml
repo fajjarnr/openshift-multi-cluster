@@ -1,0 +1,75 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  name: hub-m8sgg-infra-ap-southeast-1a
+  namespace: openshift-machine-api
+  labels:
+    machine.openshift.io/cluster-api-cluster: hub-m8sgg
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: hub-m8sgg
+      machine.openshift.io/cluster-api-machineset: hub-m8sgg-infra-ap-southeast-1a
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: hub-m8sgg
+        machine.openshift.io/cluster-api-machine-role: infra
+        machine.openshift.io/cluster-api-machine-type: infra
+        machine.openshift.io/cluster-api-machineset: hub-m8sgg-infra-ap-southeast-1a
+    spec:
+      taints:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+      lifecycleHooks: {}
+      metadata:
+        labels:
+          node-role.kubernetes.io/infra: ''
+      providerSpec:
+        value:
+          userDataSecret:
+            name: worker-user-data
+          placement:
+            availabilityZone: ap-southeast-1a
+            region: ap-southeast-1
+          credentialsSecret:
+            name: aws-cloud-credentials
+          capacityReservationId: ''
+          instanceType: m6a.2xlarge
+          metadata: {}
+          blockDevices:
+            - ebs:
+                encrypted: true
+                iops: 0
+                kmsKey:
+                  arn: ''
+                volumeSize: 100
+                volumeType: gp3
+          securityGroups:
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - hub-m8sgg-node
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - hub-m8sgg-lb
+          kind: AWSMachineProviderConfig
+          metadataServiceOptions:
+            authentication: Required
+          tags:
+            - name: kubernetes.io/cluster/hub-m8sgg
+              value: owned
+          deviceIndex: 0
+          ami:
+            id: ami-0e38d6bd2282d8072
+          subnet:
+            id: subnet-0b4f1631a31c85eef
+          apiVersion: machine.openshift.io/v1beta1
+          iamInstanceProfile:
+            id: hub-m8sgg-worker-profile

@@ -25,5 +25,8 @@ id_ecdsa
 Thumbs.db
 *.swp
 
-#
+# -- Backup files ---
 install-config.yaml.bak
+
+# kubeconfig
+*.kubeconfig

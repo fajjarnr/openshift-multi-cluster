@@ -4,6 +4,7 @@ metadata:
   name: multiclusterhub
   namespace: open-cluster-management
 spec:
+  localClusterName: hub
   availabilityConfig: High
   nodeSelector:
     node-role.kubernetes.io/infra-opp: ''

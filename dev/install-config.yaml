@@ -37,7 +37,7 @@ networking:
     - cidr: 10.137.230.128/25
   clusterNetwork:
     - cidr: 10.132.0.0/14
-      hostPrefix: 22
+      hostPrefix: 23
   serviceNetwork:
     - 172.31.0.0/16
   networkType: OVNKubernetes
