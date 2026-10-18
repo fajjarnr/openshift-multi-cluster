@@ -49,6 +49,11 @@ platform:
       subnets:
         - id: subnet-025994c9a23a589b8
         - id: subnet-0d5dc63c6ce12f63d
+    userTags:
+      Cluster: hub
+      Environment: nonprod
+      Project: ocp-lab
+      Purpose: lab
 publish: External
 sshKey: ''
 pullSecret: ''
