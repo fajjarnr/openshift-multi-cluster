@@ -9,6 +9,7 @@ spec:
       name: central-admin-password
     exposure:
       route:
+        enabled: true
         reencrypt:
           enabled: true
     persistence:

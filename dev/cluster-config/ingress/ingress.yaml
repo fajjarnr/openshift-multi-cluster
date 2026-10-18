@@ -1,0 +1,14 @@
+defaultCertificate:
+  name: app-router-certs
+replicas: 3
+nodePlacement:
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/infra: ''
+  tolerations:
+    - key: infra
+      value: node
+      effect: NoSchedule
+    - key: infra
+      value: node
+      effect: NoExecute

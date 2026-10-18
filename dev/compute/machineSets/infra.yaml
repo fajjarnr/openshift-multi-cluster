@@ -1,0 +1,83 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  name: development-925hl-infra-us-east-1a
+  namespace: openshift-machine-api
+  labels:
+    machine.openshift.io/cluster-api-cluster: development-925hl
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: development-925hl
+      machine.openshift.io/cluster-api-machineset: development-925hl-infra-us-east-1a
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: development-925hl
+        machine.openshift.io/cluster-api-machine-role: infra
+        machine.openshift.io/cluster-api-machine-type: infra
+        machine.openshift.io/cluster-api-machineset: development-925hl-infra-us-east-1a
+    spec:
+      taints:
+        - key: infra
+          value: node
+          effect: NoSchedule
+        - key: infra
+          value: node
+          effect: NoExecute
+      lifecycleHooks: {}
+      metadata:
+        labels:
+          node-role.kubernetes.io/infra: ''
+      providerSpec:
+        value:
+          userDataSecret:
+            name: worker-user-data
+          placement:
+            availabilityZone: us-east-1a
+            region: us-east-1
+          credentialsSecret:
+            name: aws-cloud-credentials
+          capacityReservationId: ''
+          instanceType: m6a.2xlarge
+          metadata: {}
+          blockDevices:
+            - ebs:
+                encrypted: true
+                iops: 0
+                kmsKey:
+                  arn: ''
+                volumeSize: 100
+                volumeType: gp3
+          securityGroups:
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - development-925hl-node
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - development-925hl-lb
+          kind: AWSMachineProviderConfig
+          metadataServiceOptions:
+            authentication: Required
+          tags:
+            - name: kubernetes.io/cluster/development-925hl
+              value: owned
+            - name: Cluster
+              value: development
+            - name: Environment
+              value: nonprod
+            - name: Project
+              value: ocp-lab
+            - name: Purpose
+              value: lab
+          deviceIndex: 0
+          ami:
+            id: ami-0980843632a1c3a66
+          subnet:
+            id: subnet-0118d2e4ae67aed11
+          apiVersion: machine.openshift.io/v1beta1
+          iamInstanceProfile:
+            id: development-925hl-worker-profile

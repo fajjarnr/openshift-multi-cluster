@@ -1,0 +1,28 @@
+replicas: 3
+defaultRoute: true
+rolloutStrategy: Recreate
+managementState: Managed
+storage:
+  managementState: Unmanaged
+  pvc:
+    claim: image-registry-storage
+nodeSelector:
+  node-role.kubernetes.io/infra: ''
+tolerations:
+  - key: infra
+    value: node
+    effect: NoSchedule
+  - key: infra
+    value: node
+    effect: NoExecute
+
+# storage:
+#   managementState: Managed
+#   s3:
+#     bucket: hub-m8sgg-image-registry-ap-southeast-1
+#     encrypt: true
+#     region: ap-southeast-1
+#     trustedCA:
+#       name: ''
+#     virtualHostedStyle: false
+# replicas: 2

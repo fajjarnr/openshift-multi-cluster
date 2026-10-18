@@ -1,0 +1,74 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  name: monitoring-925hl-worker-us-east-1a
+  namespace: openshift-machine-api
+  labels:
+    machine.openshift.io/cluster-api-cluster: monitoring-925hl
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: monitoring-925hl
+      machine.openshift.io/cluster-api-machineset: monitoring-925hl-worker-us-east-1a
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: monitoring-925hl
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: monitoring-925hl-worker-us-east-1a
+    spec:
+      lifecycleHooks: {}
+      metadata: {}
+      providerSpec:
+        value:
+          userDataSecret:
+            name: worker-user-data
+          placement:
+            availabilityZone: us-east-1a
+            region: us-east-1
+          credentialsSecret:
+            name: aws-cloud-credentials
+          capacityReservationId: ''
+          instanceType: m6a.2xlarge
+          metadata: {}
+          blockDevices:
+            - ebs:
+                encrypted: true
+                iops: 0
+                kmsKey:
+                  arn: ''
+                volumeSize: 100
+                volumeType: gp3
+          securityGroups:
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - development-925hl-node
+            - filters:
+                - name: 'tag:Name'
+                  values:
+                    - development-925hl-lb
+          kind: AWSMachineProviderConfig
+          metadataServiceOptions:
+            authentication: Required
+          tags:
+            - name: kubernetes.io/cluster/development-925hl
+              value: owned
+            - name: Cluster
+              value: development
+            - name: Environment
+              value: nonprod
+            - name: Project
+              value: ocp-lab
+            - name: Purpose
+              value: lab
+          deviceIndex: 0
+          ami:
+            id: ami-0980843632a1c3a66
+          subnet:
+            id: subnet-0118d2e4ae67aed11
+          apiVersion: machine.openshift.io/v1beta1
+          iamInstanceProfile:
+            id: development-925hl-worker-profile
