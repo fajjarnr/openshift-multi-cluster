@@ -75,9 +75,9 @@ variable "hub_private_subnets" {
   ]
 }
 
-# --- Development VPC Network (10.137.230.128/25 - 128 IP) ---
+# --- Dev VPC Network (10.137.230.128/25 - 128 IP) ---
 variable "dev_vpc_cidr" {
-  description = "The CIDR block for the Development Cluster VPC."
+  description = "The CIDR block for the Dev Cluster VPC."
   type        = string
   default     = "10.137.230.128/25"
 

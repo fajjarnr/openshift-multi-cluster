@@ -31,7 +31,7 @@ controlPlane:
         - ap-southeast-1a
   replicas: 3
 metadata:
-  name: development
+  name: dev
 networking:
   machineNetwork:
     - cidr: 10.137.230.128/25
@@ -50,7 +50,7 @@ platform:
         - id: subnet-025994c9a23a589b8
         - id: subnet-0d5dc63c6ce12f63d
     userTags:
-      Cluster: development
+      Cluster: dev
       Environment: nonprod
       Project: ocp-lab
       Purpose: lab

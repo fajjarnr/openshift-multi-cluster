@@ -39,7 +39,7 @@ module "bastion_hub" {
   depends_on = [module.vpc_hub]
 }
 
-# --- 2. Bastion Host for Development Cluster ---
+# --- 2. Bastion Host for Dev Cluster ---
 module "bastion_dev" {
   count  = var.enable_dev ? 1 : 0
   source = "./modules/ec2"
@@ -55,7 +55,7 @@ module "bastion_dev" {
   associate_public_ip_address = true
   enable_ssm                  = true
   user_data                   = local.bastion_user_data
-  tags                        = merge(local.common_tags, { Cluster = "development", Role = "bastion" })
+  tags                        = merge(local.common_tags, { Cluster = "dev", Role = "bastion" })
 
   depends_on = [module.vpc_dev]
 }

@@ -24,3 +24,6 @@ id_ecdsa
 .DS_Store
 Thumbs.db
 *.swp
+
+#
+install-config.yaml.bak

@@ -9,12 +9,12 @@ output "hub_vpc_cidr" {
 }
 
 output "dev_vpc_id" {
-  description = "The ID of the Development VPC."
+  description = "The ID of the Dev VPC."
   value       = var.enable_dev ? module.vpc_dev[0].vpc_id : null
 }
 
 output "dev_vpc_cidr" {
-  description = "The CIDR block of the Development VPC."
+  description = "The CIDR block of the Dev VPC."
   value       = var.enable_dev ? module.vpc_dev[0].vpc_cidr : null
 }
 
@@ -37,7 +37,7 @@ output "hub_network" {
 }
 
 output "dev_network" {
-  description = "Subnet IDs and CIDRs for OpenShift Development Cluster."
+  description = "Subnet IDs and CIDRs for OpenShift Dev Cluster."
   value = var.enable_dev ? {
     vpc_id            = module.vpc_dev[0].vpc_id
     network_cidr      = module.vpc_dev[0].vpc_cidr
@@ -89,7 +89,7 @@ output "openshift_hub_install_config_snippet" {
 }
 
 output "openshift_dev_install_config_snippet" {
-  description = "Snippet to place in development/install-config.yaml"
+  description = "Snippet to place in dev/install-config.yaml"
   value = var.enable_dev ? (<<-YAML
     networking:
       machineNetwork:

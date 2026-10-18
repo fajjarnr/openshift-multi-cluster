@@ -5,7 +5,7 @@ environment = "nonprod"
 # ==============================================================================
 # Feature Flags / Toggles
 # Set enable_dev = false jika ingin deploy infra Hub terlebih dahulu.
-# Ubah enable_dev = true saat siap deploy Development cluster & VPC Peering.
+# Ubah enable_dev = true saat siap deploy Dev cluster & VPC Peering.
 # ==============================================================================
 enable_hub = true
 enable_dev = true
@@ -32,7 +32,7 @@ hub_private_subnets = [
 ]
 
 # ==========================================
-# 2. Development Cluster VPC (10.137.230.128/25)
+# 2. Dev Cluster VPC (10.137.230.128/25)
 # ==========================================
 dev_vpc_cidr = "10.137.230.128/25"
 

@@ -11,7 +11,7 @@ module "vpc_hub" {
   tags            = merge(local.common_tags, { Cluster = "hub" })
 }
 
-# --- 2. Development Cluster VPC ---
+# --- 2. Dev Cluster VPC ---
 module "vpc_dev" {
   count  = var.enable_dev ? 1 : 0
   source = "./modules/vpc"
@@ -21,7 +21,7 @@ module "vpc_dev" {
   public_subnets  = var.dev_public_subnets
   private_subnets = var.dev_private_subnets
   region          = var.region
-  tags            = merge(local.common_tags, { Cluster = "development" })
+  tags            = merge(local.common_tags, { Cluster = "dev" })
 }
 
 # --- 3. VPC Peering Connection (Hub <-> Dev) ---

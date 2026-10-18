@@ -1,10 +1,8 @@
 {
-  "terraform.languageServer.rootModules": [
-    "terraform"
-  ],
+  "terraform.languageServer.rootModules": ["terraform"],
   "terraform.languageServer.indexing.ignoreDirectoryNames": [
     ".git",
     "hub",
-    "development"
+    "dev"
   ]
 }
