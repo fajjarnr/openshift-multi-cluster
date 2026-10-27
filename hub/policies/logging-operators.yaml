@@ -1,0 +1,73 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: logging-operators
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: AU Audit and Accountability
+    policy.open-cluster-management.io/controls: AU-4 Audit Log Storage Capacity
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-cluster-logging
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          subscription:
+            channel: stable-6.6
+            name: cluster-logging
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-logging
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-loki-operator
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          subscription:
+            channel: stable-6.6
+            name: loki-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-operators-redhat
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: logging-operators
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: logging-operators
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: logging-operators
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: logging-operators

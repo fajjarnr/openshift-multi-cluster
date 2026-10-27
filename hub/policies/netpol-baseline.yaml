@@ -1,0 +1,99 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: netpol-baseline
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: SC System and Communications Protection
+    policy.open-cluster-management.io/controls: SC-7 Boundary Protection
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: namespace-baseline-netpol
+        spec:
+          remediationAction: enforce
+          severity: medium
+          # Opt-in per namespace: label netpol-baseline=enabled.
+          # Namespace baru TIDAK otomatis kena — admin label manual setelah
+          # app siap (allow-policy spesifik sudah dibuat bila perlu).
+          namespaceSelector:
+            include: ["*"]
+            matchLabels:
+              netpol-baseline: enabled
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: networking.k8s.io/v1
+                kind: NetworkPolicy
+                metadata:
+                  name: baseline-default
+                spec:
+                  podSelector: {}
+                  policyTypes:
+                    - Ingress
+                    - Egress
+                  # Ingress: hanya dari pod dalam namespace yang sama.
+                  # Akses lintas namespace butuh NetworkPolicy allow eksplisit.
+                  ingress:
+                    - from:
+                        - podSelector: {}
+                  egress:
+                    # DNS cluster: Service 172.31.0.10:53 di-DNAT ke pod
+                    # dns-default port 5353 (lihat EndpointSlice), dan OVN-K
+                    # mengevaluasi egress NP post-DNAT — rule HARUS pakai 5353,
+                    # port 53 tidak akan pernah match. Terbukti via smoke test.
+                    - to:
+                        - namespaceSelector:
+                            matchLabels:
+                              kubernetes.io/metadata.name: openshift-dns
+                          podSelector:
+                            matchLabels:
+                              dns.operator.openshift.io/daemonset-dns: default
+                      ports:
+                        - port: 5353
+                          protocol: UDP
+                        - port: 5353
+                          protocol: TCP
+                    # Antar-pod dalam namespace yang sama.
+                    - to:
+                        - podSelector: {}
+---
+# Target: application workload clusters. Hub di-exclude (local-cluster) —
+# hub management plane, network-nya default CNI cukup seperti NMState.
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: netpol-baseline
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+          matchExpressions:
+            - key: local-cluster
+              operator: NotIn
+              values: ["true"]
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: netpol-baseline
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: netpol-baseline
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: netpol-baseline

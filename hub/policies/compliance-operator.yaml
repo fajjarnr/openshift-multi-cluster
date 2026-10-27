@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policies
+---
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: default
+  namespace: policies
+spec:
+  clusterSet: default
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: compliance-operator
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-14 Signed Components
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-compliance-operator
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          subscription:
+            channel: stable
+            name: compliance-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-compliance
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: compliance-scans
+        spec:
+          remediationAction: enforce
+          severity: medium
+          # ScanSettingBinding butuh Profile yang dibuat operator dari
+          # ProfileBundle — apply otomatis setelah CSV Succeeded.
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: compliance.openshift.io/v1alpha1
+                kind: ScanSettingBinding
+                metadata:
+                  name: ocp4-platform
+                  namespace: openshift-compliance
+                profiles:
+                  - name: ocp4-cis
+                    kind: Profile
+                    apiGroup: compliance.openshift.io/v1alpha1
+                settingsRef:
+                  name: default
+                  kind: ScanSetting
+                  apiGroup: compliance.openshift.io/v1alpha1
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: compliance.openshift.io/v1alpha1
+                kind: ScanSettingBinding
+                metadata:
+                  name: ocp4-node
+                  namespace: openshift-compliance
+                profiles:
+                  - name: ocp4-cis-node
+                    kind: Profile
+                    apiGroup: compliance.openshift.io/v1alpha1
+                settingsRef:
+                  name: default
+                  kind: ScanSetting
+                  apiGroup: compliance.openshift.io/v1alpha1
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: compliance.openshift.io/v1alpha1
+                kind: ScanSettingBinding
+                metadata:
+                  name: rhcos4-node
+                  namespace: openshift-compliance
+                profiles:
+                  - name: rhcos4-moderate
+                    kind: Profile
+                    apiGroup: compliance.openshift.io/v1alpha1
+                settingsRef:
+                  name: default
+                  kind: ScanSetting
+                  apiGroup: compliance.openshift.io/v1alpha1
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: compliance-operator-healthy
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: ClusterServiceVersion
+                metadata:
+                  namespace: openshift-compliance
+                status:
+                  phase: Succeeded
+              objectSelector:
+                matchLabels:
+                  operators.coreos.com/compliance-operator.openshift-compliance: ''
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: compliance-operator
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: compliance-operator
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: compliance-operator
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: compliance-operator

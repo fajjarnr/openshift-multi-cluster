@@ -1,0 +1,65 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: etcd-encryption
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: SC System and Communications Protection
+    policy.open-cluster-management.io/controls: SC-28 Protection of Information at Rest
+spec:
+  disabled: false
+  # INFORM, bukan enforce — "Controlled Remediation". Menyalakan enkripsi etcd
+  # me-re-encrypt semua secret/configmap + rolling restart kube-apiserver
+  # (API down sesaat di SingleReplica). Tidak boleh ke-trigger otomatis oleh
+  # controller; admin yang enable manual per cluster saat maintenance.
+  remediationAction: inform
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: apiserver-encryption-aescbc
+        spec:
+          remediationAction: inform
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: config.openshift.io/v1
+                kind: APIServer
+                metadata:
+                  name: cluster
+                spec:
+                  encryption:
+                    type: aescbc
+---
+# Target: semua self-managed OCP termasuk hub. Hub ikut karena ia juga
+# menyimpan secret di etcd-nya sendiri.
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: etcd-encryption
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: etcd-encryption
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: etcd-encryption
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: etcd-encryption

@@ -1,0 +1,89 @@
+# JANGAN APPLY ke hub/dev — cluster ini test-only tanpa node ODF/disk.
+# Policy ini untuk managed cluster produksi (ODF internal mode).
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: odf-operator
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-14 Signed Components
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-odf-operator
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          # ODF hanya support OwnNamespace/SingleNamespace (installModes CSV),
+          # jadi OperatorGroup harus targetNamespaces: [openshift-storage],
+          # bukan AllNamespaces (default controller kalau field ini kosong).
+          operatorGroup:
+            name: openshift-storage-operatorgroup
+            namespace: openshift-storage
+            spec:
+              targetNamespaces:
+                - openshift-storage
+          subscription:
+            channel: stable-4.22
+            name: odf-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-storage
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-storagecluster-ready
+        spec:
+          remediationAction: inform # StorageCluster butuh disk/node ODF; jangan auto-create
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: ocs.openshift.io/v1
+                kind: StorageCluster
+                metadata:
+                  name: ocs-storagecluster
+                  namespace: openshift-storage
+                status:
+                  phase: Ready
+---
+# Target: cluster berlabel storage=odf (pasang label manual di ManagedCluster
+# produksi). Default label vendor=OpenShift TIDAK dipakai supaya cluster test
+# (hub/dev) tidak ikut ter-enforce.
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: odf-operator
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            storage: odf
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: odf-operator
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: odf-operator
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: odf-operator

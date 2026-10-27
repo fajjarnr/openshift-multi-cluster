@@ -1,0 +1,80 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: gitops-operator
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-14 Signed Components
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-gitops-operator
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          subscription:
+            channel: latest
+            name: openshift-gitops-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-gitops-operator
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: gitops-operator-healthy
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: ClusterServiceVersion
+                metadata:
+                  namespace: openshift-gitops-operator
+                status:
+                  phase: Succeeded
+              objectSelector:
+                matchLabels:
+                  operators.coreos.com/openshift-gitops-operator.openshift-gitops-operator: ''
+---
+# Target: cluster berlabel gitops=enabled (opt-in). Hub ikut dilabel karena
+# ApplicationSet push model butuh GitOps operator di hub (ArgoCD control plane).
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: gitops-operator
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+            gitops: enabled
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: gitops-operator
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: gitops-operator
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: gitops-operator

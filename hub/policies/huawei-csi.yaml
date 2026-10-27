@@ -1,0 +1,91 @@
+# JANGAN APPLY ke hub/dev — cluster ini test-only tanpa storage Huawei.
+# Policy ini untuk managed cluster produksi yang memakai Huawei CSI driver.
+#
+# Huawei CSI (OceanStor/Dorado on-prem) TIDAK ada di OperatorHub
+# (redhat/certified/community) — instalasinya via Helm chart / manifest dari
+# paket dukungan Huawei. Karena itu file ini HANYA ConfigurationPolicy
+# (inform): memverifikasi driver terpasang dan sehat, bukan menginstal.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: huawei-csi
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-14 Signed Components
+spec:
+  disabled: false
+  remediationAction: inform
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: huawei-csi-driver-present
+        spec:
+          remediationAction: inform
+          severity: high
+          object-templates:
+            # CSIDriver terdaftar (nama sesuai model storage; contoh di bawah
+            # untuk OceanStor Dorado V6 — sesuaikan dengan instalasi real).
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: storage.k8s.io/v1
+                kind: CSIDriver
+                metadata:
+                  name: csi.huawei.com
+                spec:
+                  attachRequired: true
+            # Controller Deployment tersedia (nama/namespace sesuai chart Huawei;
+            # sesuaikan sebelum pakai).
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: huawei-csi-controller
+                  namespace: huawei-csi
+                status:
+                  availableReplicas: 1
+              # hanya cek field availableReplicas, abaikan spec drift versi chart
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: apps/v1
+                kind: DaemonSet
+                metadata:
+                  name: huawei-csi-node
+                  namespace: huawei-csi
+                status:
+                  numberUnavailable: 0
+---
+# Target: cluster berlabel storage=huawei (pasang label manual di ManagedCluster
+# produksi). Default label vendor=OpenShift TIDAK dipakai supaya cluster test
+# (hub/dev) tidak ikut ter-enforce.
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: huawei-csi
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            storage: huawei
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: huawei-csi
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: huawei-csi
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: huawei-csi

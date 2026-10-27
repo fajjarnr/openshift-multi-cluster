@@ -1,0 +1,91 @@
+# LokiStack prod (ODF) — DISABLED. Jangan enable di test cluster (hub/dev):
+# butuh node infra, ODF (storageClass ocs-storagecluster-ceph-rbd), dan
+# Secret S3 valid (logging-loki-secret). Spec disalin dari
+# hub/cluster-config/logging/loki.yaml.
+#
+# Enable hanya di cluster prod: set disabled: false di bawah + label
+# ManagedCluster storage=odf.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: lokistack-prod
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: AU Audit and Accountability
+    policy.open-cluster-management.io/controls: AU-4 Audit Log Storage Capacity
+spec:
+  disabled: true
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: lokistack-odf
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: loki.grafana.com/v1
+                kind: LokiStack
+                metadata:
+                  name: logging-loki
+                  namespace: openshift-logging
+                spec:
+                  limits:
+                    global:
+                      retention:
+                        days: 30
+                  size: 1x.extra-small
+                  storage:
+                    schemas:
+                      - effectiveDate: '2026-01-01'
+                        version: v13
+                    secret:
+                      name: logging-loki-secret
+                      type: s3
+                    tls:
+                      caName: openshift-service-ca.crt
+                  storageClassName: ocs-storagecluster-ceph-rbd
+                  tenants:
+                    mode: openshift-logging
+            # Secret S3 (dari OBC NooBaa) harus ada — dibuat manual per cluster,
+            # policy hanya cek keberadaan (musthave tanpa data = exists check).
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: logging-loki-secret
+                  namespace: openshift-logging
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: lokistack-prod
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            storage: odf
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: lokistack-prod
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: lokistack-prod
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: lokistack-prod

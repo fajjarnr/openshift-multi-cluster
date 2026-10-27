@@ -1,0 +1,83 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: nmstate-operator
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-14 Signed Components
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: install-nmstate-operator
+        spec:
+          remediationAction: enforce
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          subscription:
+            channel: stable
+            name: kubernetes-nmstate-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            namespace: openshift-nmstate
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: nmstate-operator-healthy
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: ClusterServiceVersion
+                metadata:
+                  namespace: openshift-nmstate
+                status:
+                  phase: Succeeded
+              objectSelector:
+                matchLabels:
+                  operators.coreos.com/kubernetes-nmstate-operator.openshift-nmstate: ''
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: nmstate-operator
+  namespace: policies
+spec:
+  clusterSets:
+    - default
+  predicates:
+    # NMState hanya untuk managed cluster (kebutuhan OpenShift Virtualization
+    # di dev dkk) — hub di-exclude via label local-cluster=true.
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            vendor: OpenShift
+          matchExpressions:
+            - key: local-cluster
+              operator: NotIn
+              values: ["true"]
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: nmstate-operator
+  namespace: policies
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: nmstate-operator
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: nmstate-operator
