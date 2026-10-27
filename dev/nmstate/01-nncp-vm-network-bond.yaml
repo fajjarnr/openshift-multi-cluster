@@ -1,0 +1,89 @@
+# JANGAN APPLY di dev (AWS, single vNIC ens5) — bond LACP butuh 2+ NIC
+# fisik + switch LACP. File ini untuk node on-prem/bare metal dengan NIC
+# enp2s0f0 + enp2s0f1 terhubung ke switch port-channel LACP.
+#
+# bond0 = primary OVN-K (jangan sentuh — dikelola cluster-network-operator).
+# bond1 = VM traffic OpenShift Virtualization (cross-node bonding NIC kedua).
+#
+# Topologi hasil:
+#   enp2s0f0 ─┐
+#              ├─ bond1 (802.3ad LACP, miimon 100)
+#   enp2s0f1 ─┘     │
+#                   ├─ bond1.100 (VLAN 100, VM tenant A)
+#                   └─ bond1.200 (VLAN 200, VM tenant B)
+#   br-vm100: Linux bridge atas bond1.100 (attachment Multus VM)
+#   br-vm200: Linux bridge atas bond1.200
+#
+# Sesuaikan SEBELUM apply: nama NIC, VLAN ID, nodeSelector hostname.
+apiVersion: nmstate.io/v1
+kind: NodeNetworkConfigurationPolicy
+metadata:
+  name: vm-network-bond
+spec:
+  nodeSelector:
+    # label node worker virt, mis: node-role.kubernetes.io/worker-virt: ""
+    node-role.kubernetes.io/worker: ""
+  desiredState:
+    interfaces:
+      - name: bond1
+        type: bond
+        state: up
+        ipv4:
+          enabled: false
+        ipv6:
+          enabled: false
+        link-aggregation:
+          mode: 802.3ad
+          options:
+            miimon: "100"
+            lacp-rate: slow
+            xmit-hash-policy: layer3+4
+          port:
+            - enp2s0f0
+            - enp2s0f1
+      - name: bond1.100
+        type: vlan
+        state: up
+        ipv4:
+          enabled: false
+        ipv6:
+          enabled: false
+        vlan:
+          base-iface: bond1
+          id: 100
+      - name: bond1.200
+        type: vlan
+        state: up
+        ipv4:
+          enabled: false
+        ipv6:
+          enabled: false
+        vlan:
+          base-iface: bond1
+          id: 200
+      - name: br-vm100
+        type: linux-bridge
+        state: up
+        ipv4:
+          enabled: false
+        ipv6:
+          enabled: false
+        bridge:
+          options:
+            stp:
+              enabled: false
+          port:
+            - name: bond1.100
+      - name: br-vm200
+        type: linux-bridge
+        state: up
+        ipv4:
+          enabled: false
+        ipv6:
+          enabled: false
+        bridge:
+          options:
+            stp:
+              enabled: false
+          port:
+            - name: bond1.200

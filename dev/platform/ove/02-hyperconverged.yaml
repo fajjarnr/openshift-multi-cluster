@@ -1,0 +1,35 @@
+# HyperConverged singleton — HCO meng-own KubeVirt/CDI/NetworkAddons CR,
+# jadi SEMUA setting KubeVirt masuk lewat spec HyperConverged ini.
+# CR KubeVirt manual akan di-overwrite HCO — jangan buat terpisah.
+#
+# API v1 (nested): spec.virtualization.* — v1beta1 flat otomatis di-convert
+# server ke struktur ini. Tulis langsung v1 agar drift-bersih.
+apiVersion: hco.kubevirt.io/v1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec:
+  virtualization:
+    # Eviction cluster-wide: LiveMigrate saat node drain.
+    evictionStrategy: LiveMigrate
+    # Workload update: LiveMigrate untuk update otomatis.
+    workloadUpdateStrategy:
+      workloadUpdateMethods:
+        - LiveMigrate
+    # Live migration sesuai spec (no bandwidth cap = unset).
+    liveMigrationConfig:
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+      completionTimeoutPerGiB: 150
+      progressTimeout: 150
+      allowAutoConverge: false
+      allowPostCopy: false
+    # vCPU overcommit 10:1.
+    vmiCPUAllocationRatio: 10
+  # TLS security profile + cert rotation: operator defaults (unset).
+  # CPU model: default host-model (unset, no override).
+  # Default VM interface: bridge on Multus VLANs — NAD bridge dibuat terpisah
+  # per VLAN (permitBridgeInterfaceOnPodNetwork default false = VM wajib pakai
+  # Multus secondary network, bukan pod network).
+  # Feature gates default 4.22 (CPUManager, Snapshot, ExpandDisks sudah GA).

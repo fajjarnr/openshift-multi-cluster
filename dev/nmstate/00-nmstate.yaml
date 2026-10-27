@@ -1,0 +1,6 @@
+# NMState singleton — mengaktifkan nmstate-handler DaemonSet + CRD
+# NodeNetworkConfigurationPolicy/Enactment/State.
+apiVersion: nmstate.io/v1
+kind: NMState
+metadata:
+  name: nmstate
