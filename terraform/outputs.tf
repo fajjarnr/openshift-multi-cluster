@@ -105,14 +105,14 @@ output "openshift_dev_install_config_snippet" {
   ) : null
 }
 
-# --- Route53 Hosted Zones Outputs ---
-output "public_zone_ids" {
-  description = "Map of public Route53 zone name to hosted zone ID."
-  value       = { for name, zone in aws_route53_zone.public : name => zone.zone_id }
-}
 
-output "public_zone_name_servers" {
-  description = "Map of public Route53 zone name to its name servers (delegation NS records)."
-  value       = { for name, zone in aws_route53_zone.public : name => zone.name_servers }
-}
+#output "public_zone_ids" {
+#  description = "Map of public Route53 zone name to hosted zone ID."
+#  value       = { for name, zone in aws_route53_zone.public : name => zone.zone_id }
+#}
+#
+#output "public_zone_name_servers" {
+#  description = "Map of public Route53 zone name to its name servers (delegation NS records)."
+#  value       = { for name, zone in aws_route53_zone.public : name => zone.name_servers }
+#}
 

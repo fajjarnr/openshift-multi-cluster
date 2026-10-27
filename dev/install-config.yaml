@@ -34,7 +34,7 @@ metadata:
   name: dev
 networking:
   machineNetwork:
-    - cidr: 10.137.230.128/25
+    - cidr: 10.137.232.0/25
   clusterNetwork:
     - cidr: 10.132.0.0/14
       hostPrefix: 23

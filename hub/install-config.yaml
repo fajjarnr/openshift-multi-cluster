@@ -34,7 +34,7 @@ metadata:
   name: hub
 networking:
   machineNetwork:
-    - cidr: 10.137.230.0/25
+    - cidr: 10.137.232.128/27
   clusterNetwork:
     - cidr: 10.128.0.0/14
       hostPrefix: 23
