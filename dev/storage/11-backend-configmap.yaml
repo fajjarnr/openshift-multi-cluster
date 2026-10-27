@@ -1,0 +1,22 @@
+# Backend Dorado — config non-sensitif (referensi dari StorageBackendClaim).
+# storage: oceanstor-fc (FC fabric — pastikan zoning host↔storage sudah ada).
+# urls: DeviceManager floating + controller (port 8088).
+# pools: storage pool yang boleh dipakai CSI.
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: huawei-dorado-config
+  namespace: huawei-csi
+data:
+  backend.yaml: |
+    storage: "oceanstor-fc"
+    name: dorado-dev
+    namespace: huawei-csi
+    urls:
+      - "https://<ISI_IP_DM_1>:8088"
+      - "https://<ISI_IP_DM_2>:8088"
+    pools:
+      - "<ISI_POOL_1>"
+    parameters:
+      protocol: fc
+    maxClientThreads: "30"

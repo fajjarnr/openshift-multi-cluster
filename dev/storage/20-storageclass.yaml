@@ -1,0 +1,35 @@
+# StorageClass block (LUN, iSCSI/FC) — untuk VM KubeVirt (RWO Block)
+# dan workload database. volumeType lun + thin.
+# backend: opsional, kosongkan jika SBC cuma satu; isi nama SBC jika banyak.
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: huawei-dorado-block
+provisioner: csi.huawei.com
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  volumeType: lun
+  allocType: thin
+---
+# StorageClass file (NFS, NAS) — untuk RWX/shared (upload, ISO, backup).
+# Ganti volumeType + authClient sesuai kebutuhan; backend terpisah jika
+# NAS di storage/logical-port berbeda (buat SBC + Secret/CM kedua).
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: huawei-dorado-file
+provisioner: csi.huawei.com
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  volumeType: fs
+  allocType: thin
+  authClient: "*"
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: huawei-dorado-snap
+driver: csi.huawei.com
+deletionPolicy: Delete

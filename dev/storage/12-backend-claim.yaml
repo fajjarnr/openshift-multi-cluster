@@ -1,0 +1,12 @@
+# StorageBackendClaim — daftarkan Dorado ke CSI driver.
+# CRD xuanwu.huawei.io/v1, dibuat oleh Helm chart (helm/esdk/crds/backend).
+# provider: harus cocok dengan backend yang dikenali driver ("oceanstor-fc").
+kind: StorageBackendClaim
+metadata:
+  name: dorado-dev
+  namespace: huawei-csi
+spec:
+  provider: oceanstor-fc
+  secretMeta: huawei-csi/huawei-dorado-secret
+  configmapMeta: huawei-csi/huawei-dorado-config
+  maxClientThreads: "30"

@@ -1,0 +1,20 @@
+# Helm values override untuk Huawei CSI (chart esdk v4.13.0).
+# Target: on-prem 3 master + 5 worker — controller + node plugin jalan di
+# worker saja (default chart, tanpa toleration master). Jangan tambah
+# toleration master: control plane tidak boleh kena beban CSI.
+#
+# Install:
+#   helm install huawei-csi oci://<registry>/esdk --version 4.13.0 \
+#     -n huawei-csi --create-namespace -f helm-values.yaml
+# Atau dari repo Huawei/eSDK_K8S_Plugin (helm/esdk) setelah ganti
+# {{csi-version}} -> 4.13.0 di Chart.yaml + values.yaml.
+controller:
+  controllerCount: 2
+  snapshot:
+    enabled: true
+  resizer:
+    enabled: true
+CSIDriverObject:
+  isCreate: true
+  attachRequired: true
+  fsGroupPolicy: File
